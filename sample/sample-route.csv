@@ -1,0 +1,7 @@
+,Las Vegas,Los Angeles,San Francisco,Page,Gran Canyon,Antelope Canyon
+Las Vegas,,269,568,273,270,280
+Los Angeles,269,,382,540,486,548
+San Francisco,568,382,,839,784,846
+Page,273,540,839,,109,7
+Gran Canyon,270,486,784,109,,112
+Antelope Canyon,280,548,846,7,112,

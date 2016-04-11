@@ -11,36 +11,24 @@
  */
 package org.ark.math.commivoyager.algorithm;
 
-import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
-import static org.ark.math.commivoyager.model.CityPair.EstimatedCostComparator;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Stream;
-
+import com.google.common.base.Preconditions;
 import org.apache.commons.collections.CollectionUtils;
 import org.ark.math.commivoyager.model.City;
 import org.ark.math.commivoyager.model.CityPair;
-import org.ark.math.commivoyager.repository.CostRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Required;
 
-import com.google.common.base.Preconditions;
+import java.util.*;
+import java.util.stream.Stream;
+
+import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.*;
+import static org.ark.math.commivoyager.model.CityPair.EstimatedCostComparator;
 
 public class OptimizationStrategy
 {
 	private static final Logger logger = LoggerFactory.getLogger(OptimizationStrategy.class);
 
-	private CostRepository costRepository;
-	
 	public enum OptimizeBy 
 	{
 		DISTANCE,
@@ -257,13 +245,6 @@ public class OptimizationStrategy
 	{
 		return  seedRoute.stream().flatMap(p -> Stream.of(p.getCity1(), p.getCity2())).distinct().collect(toSet());
 	}
-
-	@Required
-	public void setCostRepository(final CostRepository costRepository)
-	{
-		this.costRepository = costRepository;
-	}
-
 
 	private String dumpCityPairs(final Set<CityPair> cityPairs)
 	{
