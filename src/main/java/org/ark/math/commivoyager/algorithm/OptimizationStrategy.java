@@ -29,12 +29,16 @@ import org.apache.commons.collections.CollectionUtils;
 import org.ark.math.commivoyager.model.City;
 import org.ark.math.commivoyager.model.CityPair;
 import org.ark.math.commivoyager.repository.CostRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
 
 import com.google.common.base.Preconditions;
 
 public class OptimizationStrategy
 {
+	private static final Logger logger = LoggerFactory.getLogger(OptimizationStrategy.class);
+
 	private CostRepository costRepository;
 	
 	public enum OptimizeBy 
@@ -94,15 +98,13 @@ public class OptimizationStrategy
 
 	protected Set<CityPair> normalizeRoute(final Set<CityPair> seedRoute, final OptimizeBy optimizeBy)
 	{
-		System.out.println("Before normalization:");
-		dumpCityPairs(seedRoute);
-		if(OptimizeBy.DISTANCE_SYMMETRICAL.equals(optimizeBy))
-		{
+		logger.debug("Before route matrix normalization: {}", dumpCityPairs(seedRoute));
+		if(OptimizeBy.DISTANCE_SYMMETRICAL.equals(optimizeBy)) {
 			symmetrizeRouteMatrix(seedRoute);
 		}
-		System.out.println("After normalization:");
-		dumpCityPairs(seedRoute);
-		return seedRoute.stream().filter(p -> !p.isDiagonal()).collect(toSet());
+		final Set<CityPair> normalizedRoute = seedRoute.stream().filter(p -> !p.isDiagonal()).collect(toSet());
+		logger.debug("Before after matrix normalization: {}", dumpCityPairs(normalizedRoute));
+		return normalizedRoute;
 	}
 	
 	protected void symmetrizeRouteMatrix(final Set<CityPair> seedRoute)
@@ -263,10 +265,11 @@ public class OptimizationStrategy
 	}
 
 
-	private void dumpCityPairs(final Set<CityPair> cityPairs)
+	private String dumpCityPairs(final Set<CityPair> cityPairs)
 	{
-		System.out.println("Matrix dump:");
-		cityPairs.stream().forEach(p -> System.out.print("(" + p.getCity1().getId() + ", " + p.getCity2().getId() + ") = " + p.getCost()+ " (" + p.getEstimatedZeroCellCost() + ")   "));
-		System.out.println("\n\n");
+		final StringBuilder dumpBuilder = new StringBuilder("Matrix dump:");
+		cityPairs.stream().forEach(p -> dumpBuilder.append("(" + p.getCity1().getId() + ", " + p.getCity2().getId() + ") = " + p.getCost()+ " (" + p.getEstimatedZeroCellCost() + ")   "));
+		dumpBuilder.append("\n\n");
+		return dumpBuilder.toString();
 	}
 }

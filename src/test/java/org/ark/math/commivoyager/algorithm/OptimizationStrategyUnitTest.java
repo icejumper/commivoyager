@@ -127,9 +127,9 @@ public class OptimizationStrategyUnitTest
 		final Map<City, CityPair> minimizedRow = optimizationStrategy.getMinimizedRow(cities, cityPairs);
 		optimizationStrategy.reduceColumns(cityPairs, minimizedRow);
 		final List<Long> optimizedCosts = cityPairs.stream().filter(p -> p.getCity2().equals(new City(1,""))).map(CityPair::getCost).collect(toList());
-		assertThat(optimizedCosts).contains(0l, 3l, 6l);
+		assertThat(optimizedCosts).contains(2l, 1l, 0l);
 		final List<Long> optimizedCosts2 = cityPairs.stream().filter(p -> p.getCity2().equals(new City(2,""))).map(CityPair::getCost).collect(toList());
-		assertThat(optimizedCosts2).contains(0l, 7l, 10l);
+		assertThat(optimizedCosts2).contains(0l, 5l, 4l);
 	}
 	
 	@Test
@@ -141,9 +141,9 @@ public class OptimizationStrategyUnitTest
 		optimizationStrategy.calculateEstimatedCostZeroCell(cityPairs);
 
 		final List<Long> estimatedCosts = cityPairs.stream().filter(p -> p.getCity1().equals(new City(1,""))).map(CityPair::getEstimatedZeroCellCost).collect(toList());
-		assertThat(estimatedCosts).contains(7l, 3l, 3l);
+		assertThat(estimatedCosts).contains(4l, 3l, 3l);
 		final List<Long> estimatedCosts1 = cityPairs.stream().filter(p -> p.getCity1().equals(new City(2,""))).map(CityPair::getEstimatedZeroCellCost).collect(toList());
-		assertThat(estimatedCosts1).contains(6l);
+		assertThat(estimatedCosts1).contains(4l);
 	}
 
 	@Test
