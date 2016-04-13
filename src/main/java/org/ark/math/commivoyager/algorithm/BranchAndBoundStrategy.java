@@ -25,9 +25,9 @@ import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.*;
 import static org.ark.math.commivoyager.model.CityPair.EstimatedCostComparator;
 
-public class OptimizationStrategy
+public class BranchAndBoundStrategy
 {
-	private static final Logger logger = LoggerFactory.getLogger(OptimizationStrategy.class);
+	private static final Logger logger = LoggerFactory.getLogger(BranchAndBoundStrategy.class);
 
 	public enum OptimizeBy 
 	{
@@ -44,6 +44,7 @@ public class OptimizationStrategy
 		final Set<CityPair> optimizedRoute = new HashSet<>();
 		while(!routeToOptimize.isEmpty())
 		{
+			logger.debug("Optimizing: {}", dumpCityPairs(routeToOptimize));
 			cleanEstimatedCosts(routeToOptimize);
 			optimizedRoute.add(applyBranchesAndBoundariesAlgorithm(routeToOptimize));
 		}
@@ -91,7 +92,7 @@ public class OptimizationStrategy
 			symmetrizeRouteMatrix(seedRoute);
 		}
 		final Set<CityPair> normalizedRoute = seedRoute.stream().filter(p -> !p.isDiagonal()).collect(toSet());
-		logger.debug("Before after matrix normalization: {}", dumpCityPairs(normalizedRoute));
+		logger.debug("After matrix normalization: {}", dumpCityPairs(normalizedRoute));
 		return normalizedRoute;
 	}
 	
@@ -160,9 +161,10 @@ public class OptimizationStrategy
 	{
 		final Optional<CityPair> maxEstimatedCostCell = seedRoute.stream().filter(p -> p.getCost().equals(0l))
 				.max(new EstimatedCostComparator());
+		CityPair edgeNode = maxEstimatedCostCell.get();
 		if(maxEstimatedCostCell.isPresent())
 		{
-			final CityPair cityPair = maxEstimatedCostCell.get();
+			final CityPair cityPair = edgeNode;
 			cityPair.setCost(null);
 			cityPair.setEstimatedZeroCellCost(null);
 			final Optional<CityPair> returnRoute = getReturnRoute(cityPair, seedRoute);
@@ -171,11 +173,11 @@ public class OptimizationStrategy
 			{
 				seedRoute.remove(returnRoute.get());
 			}
-			dumpCityPairs(seedRoute);
 			seedRoute.removeAll(seedRoute.stream().filter(p -> p.getCity1().equals(cityPair.getCity1()) || p.getCity2().equals(cityPair.getCity2())).collect(toSet()));
 		}
-		dumpCityPairs(seedRoute);
-		return maxEstimatedCostCell.get();
+		logger.debug("Route fragment: {} -> {}", edgeNode.getCity1().getName(), edgeNode.getCity2().getName());
+		seedRoute.stream().forEach(c -> logger.debug("{} -> {}", c.getCity1().getName(), c.getCity2().getName()));
+		return edgeNode;
 	}
 	
 	private Optional<CityPair> getReturnRoute(final CityPair cityPair, final Set<CityPair> seedRoute)
