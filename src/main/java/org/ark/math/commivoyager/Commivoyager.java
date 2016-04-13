@@ -1,6 +1,6 @@
 package org.ark.math.commivoyager;
 
-import org.ark.math.commivoyager.algorithm.OptimizationStrategy;
+import org.ark.math.commivoyager.algorithm.BranchAndBoundStrategy;
 import org.ark.math.commivoyager.config.Application;
 import org.ark.math.commivoyager.model.City;
 import org.ark.math.commivoyager.model.CityPair;
@@ -22,8 +22,8 @@ public class Commivoyager {
         final RouteReader routeReader = ctx.getBean(RouteReader.class);
 
         final Set<CityPair> cityPairs = routeReader.readMatrix();
-        final OptimizationStrategy strategy = ctx.getBean(OptimizationStrategy.class);
-        final List<City> optimizedRoute = strategy.optimize(cityPairs, (City) ctx.getBean("startCity"), OptimizationStrategy.OptimizeBy.DISTANCE_SYMMETRICAL);
+        final BranchAndBoundStrategy strategy = ctx.getBean(BranchAndBoundStrategy.class);
+        final List<City> optimizedRoute = strategy.optimize(cityPairs, (City) ctx.getBean("startCity"), BranchAndBoundStrategy.OptimizeBy.DISTANCE_SYMMETRICAL);
         dumpRoute(optimizedRoute);
     }
 

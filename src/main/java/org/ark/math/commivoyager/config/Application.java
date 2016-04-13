@@ -1,6 +1,6 @@
 package org.ark.math.commivoyager.config;
 
-import org.ark.math.commivoyager.algorithm.OptimizationStrategy;
+import org.ark.math.commivoyager.algorithm.BranchAndBoundStrategy;
 import org.ark.math.commivoyager.model.City;
 import org.ark.math.commivoyager.repository.CityFactory;
 import org.ark.math.commivoyager.repository.RouteReader;
@@ -32,9 +32,9 @@ public class Application {
     }
 
     @Bean
-    public OptimizationStrategy getOptimizationStrategy()
+    public BranchAndBoundStrategy getOptimizationStrategy()
     {
-        return new OptimizationStrategy();
+        return new BranchAndBoundStrategy();
     }
 
     @Bean

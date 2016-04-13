@@ -16,7 +16,7 @@ import static java.util.Objects.isNull;
 import java.util.Comparator;
 import java.util.Objects;
 
-public class CityPair
+public class CityPair implements Cloneable
 {
 	private City city1;
 	private City city2;
@@ -115,7 +115,13 @@ public class CityPair
 		result = 31 * result + city2.hashCode();
 		return result;
 	}
-	
+
+	@Override
+	public CityPair clone() throws CloneNotSupportedException {
+		super.clone();
+		return new CityPair(this.city1, this.city2, this.cost);
+	}
+
 	public static class EstimatedCostComparator implements Comparator<CityPair>
 	{
 		@Override

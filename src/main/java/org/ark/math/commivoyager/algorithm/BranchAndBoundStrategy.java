@@ -13,12 +13,14 @@ package org.ark.math.commivoyager.algorithm;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.collections.CollectionUtils;
+import org.ark.math.commivoyager.InconsistentRouteException;
 import org.ark.math.commivoyager.model.City;
 import org.ark.math.commivoyager.model.CityPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Objects.nonNull;
@@ -28,6 +30,8 @@ import static org.ark.math.commivoyager.model.CityPair.EstimatedCostComparator;
 public class BranchAndBoundStrategy
 {
 	private static final Logger logger = LoggerFactory.getLogger(BranchAndBoundStrategy.class);
+	private Long lowBoundCost;
+	private Long upperBoundCost;
 
 	public enum OptimizeBy 
 	{
@@ -38,9 +42,15 @@ public class BranchAndBoundStrategy
 	public List<City> optimize(final Set<CityPair> seedRoute, final City startCity, final OptimizeBy optimizeBy)
 	{
 		Preconditions.checkArgument(CollectionUtils.isNotEmpty(seedRoute), "The source route (CityPair collection) must not be null or empty");
-				
+
 		final Set<CityPair> normalizedRoute = normalizeRoute(seedRoute, optimizeBy);
-		Set<CityPair> routeToOptimize = normalizedRoute.stream().filter(p -> !p.isRouteOptimized()).collect(toSet());
+		final Set<CityPair> routeToOptimize = normalizedRoute.stream().filter(p -> !p.isRouteOptimized()).collect(toSet());
+
+		final Set<CityPair> originalRoute = cloneRoute(routeToOptimize);
+
+		lowBoundCost = calculateLowerBoundCost(cloneRoute(routeToOptimize));
+		upperBoundCost = calculateUpperBoundCost(createCycle(cloneRoute(routeToOptimize)));
+
 		final Set<CityPair> optimizedRoute = new HashSet<>();
 		while(!routeToOptimize.isEmpty())
 		{
@@ -50,7 +60,24 @@ public class BranchAndBoundStrategy
 		}
 		return getFinalRoute(optimizedRoute, startCity);
 	}
-	
+
+	private Set<CityPair> cloneRoute(final Set<CityPair> seedRoute)
+	{
+		return seedRoute.stream().map(this::cloneCityPair).collect(Collectors.toSet());
+	}
+
+	private CityPair cloneCityPair(final CityPair cityPair)
+	{
+		try
+		{
+			return cityPair.clone();
+		}
+		catch (final CloneNotSupportedException e)
+		{
+			throw new InconsistentRouteException("CloneNotSupportedException caught: " + e.getMessage());
+		}
+	}
+
 	protected List<City> getFinalRoute(final Set<CityPair> route, final City startCity)
 	{
 	 	final Optional<CityPair> startCityPair = route.stream().filter(p -> p.getCity1().equals(startCity)).findFirst();
@@ -76,10 +103,53 @@ public class BranchAndBoundStrategy
 		reduceRows(seedRoute, minimizedColumn);
 		final Map<City, CityPair> minimizedRow = getMinimizedRow(cities, seedRoute);
 		reduceColumns(seedRoute, minimizedRow);
+
+		Long lowBoundaryConstant = minimizedColumn.values().stream().reduce(0L, (c, p) -> c + p.getCost(), Long::sum);
+		lowBoundaryConstant += minimizedRow.values().stream().reduce(0L, (c, p) -> c + p.getCost(), Long::sum);
+
 		calculateEstimatedCostZeroCell(seedRoute);
 		return reduceRoutingMatrix(seedRoute);
 	}
-	
+
+	private List<CityPair> createCycle(final Set<CityPair> seedRoute)
+	{
+		final List<City> sortedCities = getAllCitiesOnTheRoute(seedRoute).stream().sorted(new City.CityComparator()).collect(toList());
+		final List<CityPair> sortedRoute = new ArrayList<>();
+		for(int i = 0; i < sortedCities.size(); i++)
+		{
+			final City city1 = sortedCities.get(i);
+			final City city2;
+			if(i < sortedCities.size() - 1)
+			{
+				city2 = sortedCities.get(i+1);
+			}
+			else
+			{
+				city2 = sortedCities.get(0);
+			}
+			sortedRoute.add(seedRoute.stream().filter(p -> p.getCity1().equals(city1) && p.getCity2().equals(city2)).findFirst().get());
+		}
+		return sortedRoute;
+	}
+
+	private Long calculateLowerBoundCost(final Set<CityPair> seedRoute)
+	{
+		final Set<City> cities = getAllCitiesOnTheRoute(seedRoute);
+		final Map<City, CityPair> minimizedColumn = getMinimizedColumn(cities, seedRoute);
+		reduceRows(seedRoute, minimizedColumn);
+		final Map<City, CityPair> minimizedRow = getMinimizedRow(cities, seedRoute);
+
+		Long lowBoundaryConstant = minimizedColumn.values().stream().reduce(0L, (c, p) -> c + p.getCost(), Long::sum);
+		lowBoundaryConstant += minimizedRow.values().stream().reduce(0L, (c, p) -> c + p.getCost(), Long::sum);
+
+		return  lowBoundaryConstant;
+	}
+
+	private Long calculateUpperBoundCost(final List<CityPair> seedRoute)
+	{
+		return seedRoute.stream().reduce(0L, (c,p) -> c + p.getCost(), Long::sum);
+	}
+
 	private void cleanEstimatedCosts(final Set<CityPair> seedRoute)
 	{
 		seedRoute.stream().forEach(p -> p.setEstimatedZeroCellCost(null));		
