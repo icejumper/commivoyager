@@ -44,19 +44,23 @@ public class BranchAndBoundStrategy
 		Preconditions.checkArgument(CollectionUtils.isNotEmpty(seedRoute), "The source route (CityPair collection) must not be null or empty");
 
 		final Set<CityPair> normalizedRoute = normalizeRoute(seedRoute, optimizeBy);
-		final Set<CityPair> routeToOptimize = normalizedRoute.stream().filter(p -> !p.isRouteOptimized()).collect(toSet());
+		Set<CityPair> routeToOptimize = normalizedRoute.stream().filter(p -> !p.isRouteOptimized()).collect(toSet());
 
 		final Set<CityPair> originalRoute = cloneRoute(routeToOptimize);
 
 		lowBoundCost = calculateLowerBoundCost(cloneRoute(routeToOptimize));
 		upperBoundCost = calculateUpperBoundCost(createCycle(cloneRoute(routeToOptimize)));
 
+		routeToOptimize = originalRoute;
 		final Set<CityPair> optimizedRoute = new HashSet<>();
 		while(!routeToOptimize.isEmpty())
 		{
 			logger.debug("Optimizing: {}", dumpCityPairs(routeToOptimize));
 			cleanEstimatedCosts(routeToOptimize);
-			optimizedRoute.add(applyBranchesAndBoundariesAlgorithm(routeToOptimize));
+			CityPair pairToInclude = applyBranchesAndBoundariesAlgorithm(routeToOptimize, optimizedRoute);
+			if(nonNull(pairToInclude)) {
+				optimizedRoute.add(pairToInclude);
+			}
 		}
 		return getFinalRoute(optimizedRoute, startCity);
 	}
@@ -96,7 +100,7 @@ public class BranchAndBoundStrategy
 		return finalRoute;
 	}
 
-	protected CityPair applyBranchesAndBoundariesAlgorithm(final Set<CityPair> seedRoute)
+	protected CityPair applyBranchesAndBoundariesAlgorithm(final Set<CityPair> seedRoute, Set<CityPair> optimizedEdges)
 	{
 		final Set<City> cities = getAllCitiesOnTheRoute(seedRoute);
 		final Map<City, CityPair> minimizedColumn = getMinimizedColumn(cities, seedRoute);
@@ -104,11 +108,8 @@ public class BranchAndBoundStrategy
 		final Map<City, CityPair> minimizedRow = getMinimizedRow(cities, seedRoute);
 		reduceColumns(seedRoute, minimizedRow);
 
-		Long lowBoundaryConstant = minimizedColumn.values().stream().reduce(0L, (c, p) -> c + p.getCost(), Long::sum);
-		lowBoundaryConstant += minimizedRow.values().stream().reduce(0L, (c, p) -> c + p.getCost(), Long::sum);
-
 		calculateEstimatedCostZeroCell(seedRoute);
-		return reduceRoutingMatrix(seedRoute);
+		return reduceRoutingMatrix(seedRoute, optimizedEdges);
 	}
 
 	private List<CityPair> createCycle(final Set<CityPair> seedRoute)
@@ -227,29 +228,101 @@ public class BranchAndBoundStrategy
 	}
 	
 	// step6: reduce routing matrix, selecting the zero cell with maximum estimated cost and setting it to INFINITY
-	protected CityPair reduceRoutingMatrix(final Set<CityPair> seedRoute)
+	protected CityPair reduceRoutingMatrix(final Set<CityPair> seedRoute, Set<CityPair> optimizedEdges)
 	{
 		final Optional<CityPair> maxEstimatedCostCell = seedRoute.stream().filter(p -> p.getCost().equals(0l))
 				.max(new EstimatedCostComparator());
-		CityPair edgeNode = maxEstimatedCostCell.get();
+		final CityPair edgeNode;
 		if(maxEstimatedCostCell.isPresent())
 		{
-			final CityPair cityPair = edgeNode;
-			cityPair.setCost(null);
-			cityPair.setEstimatedZeroCellCost(null);
-			final Optional<CityPair> returnRoute = getReturnRoute(cityPair, seedRoute);
-			cityPair.setRouteOptimized(true);
-			if(returnRoute.isPresent())
-			{
-				seedRoute.remove(returnRoute.get());
+			Set<CityPair> copyRoute = cloneRoute(seedRoute);
+			edgeNode = maxEstimatedCostCell.get();
+			copyRoute.remove(edgeNode);
+			long lowLHSCost = lowBoundCost + calculateLowerBoundCost(copyRoute);
+
+			// check if "right matrix" has any sense
+			boolean lhsWins = false;
+			if(!checkHamiltonCycle(optimizedEdges, edgeNode)) {
+
+				copyRoute = cloneRoute(seedRoute);
+				final Optional<CityPair> returnRoute = getReturnRoute(edgeNode, copyRoute);
+				if (returnRoute.isPresent()) {
+					copyRoute.remove(returnRoute.get());
+				}
+				copyRoute.removeAll(seedRoute.stream().filter(p -> p.getCity1().equals(edgeNode.getCity1()) || p.getCity2().equals(edgeNode.getCity2())).collect(toSet()));
+				logger.debug("Route fragment: {} -> {}", edgeNode.getCity1().getName(), edgeNode.getCity2().getName());
+				long lowRHSCost = lowBoundCost + calculateLowerBoundCost(copyRoute);
+				if(lowRHSCost > lowLHSCost)
+				{
+					copyRoute = cloneRoute(seedRoute);
+					copyRoute.remove(edgeNode);
+					lowBoundCost = lowLHSCost;
+					lhsWins = true;
+				}
+				else
+				{
+					lowBoundCost = lowRHSCost;
+					lhsWins = false;
+				}
 			}
-			seedRoute.removeAll(seedRoute.stream().filter(p -> p.getCity1().equals(cityPair.getCity1()) || p.getCity2().equals(cityPair.getCity2())).collect(toSet()));
+			else
+			{
+				copyRoute = cloneRoute(seedRoute);
+				copyRoute.remove(edgeNode);
+				lowBoundCost = lowLHSCost;
+				lhsWins = true;
+			}
+
+			seedRoute.clear();
+			seedRoute.addAll(copyRoute);
+			seedRoute.stream().forEach(c -> logger.debug("{} -> {}", c.getCity1().getName(), c.getCity2().getName()));
+			return lhsWins?null:edgeNode;
 		}
-		logger.debug("Route fragment: {} -> {}", edgeNode.getCity1().getName(), edgeNode.getCity2().getName());
-		seedRoute.stream().forEach(c -> logger.debug("{} -> {}", c.getCity1().getName(), c.getCity2().getName()));
-		return edgeNode;
+		return null;
 	}
-	
+
+	private boolean checkHamiltonCycle(final Set<CityPair> subContour, final CityPair newNode)
+	{
+		final List<CityPair> hamiltonCycle = new ArrayList<>(subContour);
+		hamiltonCycle.add(newNode);
+		Collections.sort(hamiltonCycle, new CityPair.CityPairComparator());
+
+		return hasClosedCycles(hamiltonCycle);
+	}
+
+	private boolean hasClosedCycles(final List<CityPair> subContour)
+	{
+		if(CollectionUtils.isEmpty(subContour))
+		{
+			return false;
+		}
+
+		City startCity = null;
+		City endCity = null;
+		for(CityPair cityPair: subContour)
+		{
+			if(startCity == null)
+			{
+				startCity = cityPair.getCity1();
+				endCity = cityPair.getCity2();
+			}
+			else if(cityPair.getCity1().equals(endCity))
+			{
+				endCity = cityPair.getCity2();
+				if(startCity.equals(endCity))
+				{
+					return true;
+				}
+			}
+			else
+			{
+				startCity = cityPair.getCity1();
+				endCity = cityPair.getCity2();
+			}
+		}
+		return false;
+	}
+
 	private Optional<CityPair> getReturnRoute(final CityPair cityPair, final Set<CityPair> seedRoute)
 	{
 		return seedRoute.stream().filter(p -> cityPair.getCity1().equals(p.getCity2()) && cityPair.getCity2().equals(p.getCity1())).findFirst();				

@@ -17,12 +17,7 @@ import static org.ark.math.commivoyager.algorithm.BranchAndBoundStrategy.Optimiz
 import static org.ark.math.commivoyager.algorithm.BranchAndBoundStrategy.OptimizeBy.DISTANCE_SYMMETRICAL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import org.ark.math.commivoyager.model.City;
 import org.ark.math.commivoyager.model.CityPair;
@@ -149,7 +144,7 @@ public class BranchAndBoundStrategyUnitTest
 	@Test
 	public void testApplyBranchesAndBoundariesAlgorithm()
 	{
-		final CityPair cityPair = branchAndBoundStrategy.applyBranchesAndBoundariesAlgorithm(cityPairs);
+		final CityPair cityPair = branchAndBoundStrategy.applyBranchesAndBoundariesAlgorithm(cityPairs, Collections.emptySet());
 		assertThat(cityPair).isNotNull();
 		assertThat(cityPairs).hasSize(6);
 	}
