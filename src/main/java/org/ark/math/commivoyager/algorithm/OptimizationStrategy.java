@@ -44,6 +44,7 @@ public class OptimizationStrategy
 		final Set<CityPair> optimizedRoute = new HashSet<>();
 		while(!routeToOptimize.isEmpty())
 		{
+			logger.debug("Optimization: {}", dumpCityPairs(routeToOptimize));
 			cleanEstimatedCosts(routeToOptimize);
 			optimizedRoute.add(applyBranchesAndBoundariesAlgorithm(routeToOptimize));
 		}
@@ -91,7 +92,7 @@ public class OptimizationStrategy
 			symmetrizeRouteMatrix(seedRoute);
 		}
 		final Set<CityPair> normalizedRoute = seedRoute.stream().filter(p -> !p.isDiagonal()).collect(toSet());
-		logger.debug("Before after matrix normalization: {}", dumpCityPairs(normalizedRoute));
+		logger.debug("After matrix normalization: {}", dumpCityPairs(normalizedRoute));
 		return normalizedRoute;
 	}
 	
@@ -171,10 +172,10 @@ public class OptimizationStrategy
 			{
 				seedRoute.remove(returnRoute.get());
 			}
-			dumpCityPairs(seedRoute);
 			seedRoute.removeAll(seedRoute.stream().filter(p -> p.getCity1().equals(cityPair.getCity1()) || p.getCity2().equals(cityPair.getCity2())).collect(toSet()));
 		}
-		dumpCityPairs(seedRoute);
+		logger.debug("Next route fragment: {} -> {}", maxEstimatedCostCell.get().getCity1().getName(), maxEstimatedCostCell.get().getCity2().getName());
+		seedRoute.stream().forEach(p -> logger.debug("Remained route fragments: {} -> {}", p.getCity1().getName(), p.getCity2().getName()));
 		return maxEstimatedCostCell.get();
 	}
 	
