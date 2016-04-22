@@ -16,12 +16,13 @@ import static java.util.Objects.isNull;
 import java.util.Comparator;
 import java.util.Objects;
 
-public class CityPair
+public class CityPair implements Cloneable
 {
 	private City city1;
 	private City city2;
 	
 	private Long cost;
+	private Long initialCost;
 	private Long estimatedZeroCellCost;
 	private boolean routeOptimized; 
 
@@ -30,6 +31,15 @@ public class CityPair
 		this.city1 = city1;
 		this.city2 = city2;
 		this.cost = cost;
+		this.initialCost = cost;
+	}
+
+	public CityPair(final City city1, final City city2, final Long cost, final Long initialCost)
+	{
+		this.city1 = city1;
+		this.city2 = city2;
+		this.cost = cost;
+		this.initialCost = initialCost;
 	}
 
 	public City getCity1()
@@ -50,6 +60,11 @@ public class CityPair
 	public void setCost(final Long cost)
 	{
 		this.cost = cost;
+	}
+
+	public Long getInitialCost()
+	{
+		return initialCost;
 	}
 
 	public Long getEstimatedZeroCellCost()
@@ -115,7 +130,13 @@ public class CityPair
 		result = 31 * result + city2.hashCode();
 		return result;
 	}
-	
+
+	@Override
+	public CityPair clone() throws CloneNotSupportedException {
+		super.clone();
+		return new CityPair(this.city1, this.city2, this.cost, this.initialCost);
+	}
+
 	public static class EstimatedCostComparator implements Comparator<CityPair>
 	{
 		@Override

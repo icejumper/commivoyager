@@ -11,6 +11,8 @@
  */
 package org.ark.math.commivoyager.model;
 
+import java.util.Comparator;
+
 public class City
 {
 	private Integer id;
@@ -58,5 +60,14 @@ public class City
 	public int hashCode()
 	{
 		return id.hashCode();
+	}
+
+	public static class CityComparator implements Comparator<City>
+	{
+		@Override
+		public int compare(final City city1, final City city2)
+		{
+			return city1.getId().compareTo(city2.getId());
+		}
 	}
 }

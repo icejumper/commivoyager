@@ -32,10 +32,10 @@ public class CsvRouteReader implements RouteReader {
     @Autowired
     private CityFactory cityFactory;
 
-    public CsvRouteReader(final String filePath) throws IOException
+    public CsvRouteReader(final String filePath, char delimiter) throws IOException
     {
         final Reader reader = new FileReader(filePath);
-        csvParser = new CSVParser(reader, CSVFormat.EXCEL);
+        csvParser = new CSVParser(reader, CSVFormat.EXCEL.withDelimiter(delimiter));
     }
 
     @Override

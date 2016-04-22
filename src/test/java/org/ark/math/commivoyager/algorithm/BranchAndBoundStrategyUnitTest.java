@@ -13,10 +13,11 @@ package org.ark.math.commivoyager.algorithm;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static org.ark.math.commivoyager.algorithm.OptimizationStrategy.OptimizeBy.DISTANCE;
-import static org.ark.math.commivoyager.algorithm.OptimizationStrategy.OptimizeBy.DISTANCE_SYMMETRICAL;
+import static org.ark.math.commivoyager.algorithm.BranchAndBoundStrategy.OptimizeBy.DISTANCE;
+import static org.ark.math.commivoyager.algorithm.BranchAndBoundStrategy.OptimizeBy.DISTANCE_SYMMETRICAL;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,12 +38,14 @@ import org.mockito.runners.MockitoJUnitRunner;
 import com.google.common.collect.ImmutableSet;
 
 @RunWith(MockitoJUnitRunner.class)
-public class OptimizationStrategyUnitTest
+public class BranchAndBoundStrategyUnitTest
 {
 	@InjectMocks
-	private OptimizationStrategy optimizationStrategy;
+	private BranchAndBoundStrategy branchAndBoundStrategy;
 	@Mock
 	private CostRepository costRepository;
+	
+	
 	
 	private Set<City> cities = ImmutableSet.of(new City(1, "city1"), new City(2, "city2"), new City(3, "city3"), new City(4, "city4"));
 	private Set<CityPair> cityPairs;
@@ -56,7 +59,7 @@ public class OptimizationStrategyUnitTest
 	@Test
 	public void testGetAllCitiesOnTheRoute()
 	{
-		final Set<City> allCities = optimizationStrategy.getAllCitiesOnTheRoute(cityPairs);
+		final Set<City> allCities = branchAndBoundStrategy.getAllCitiesOnTheRoute(cityPairs);
 		assertThat(allCities).isNotEmpty().hasSize(cities.size()).containsAll(cities);
 	}
 
@@ -64,7 +67,7 @@ public class OptimizationStrategyUnitTest
 	public void testGetMinimizedColumnEntry()
 	{
 		final City city = new City(1, "city1");
-		final Optional<CityPair> optimizedColumnEntry = optimizationStrategy.getMinimizedColumnEntry(city, cityPairs);
+		final Optional<CityPair> optimizedColumnEntry = branchAndBoundStrategy.getMinimizedColumnEntry(city, cityPairs);
 		assertThat(optimizedColumnEntry.isPresent()).isTrue();
 		assertThat(optimizedColumnEntry.get().getCity1()).isEqualTo(city);
 		assertThat(optimizedColumnEntry.get().getCost()).isEqualTo(1l);
@@ -73,7 +76,7 @@ public class OptimizationStrategyUnitTest
 	@Test
 	public void testGetMinimizedColumn()
 	{
-		final Map<City, CityPair> optimizedColumn = optimizationStrategy.getMinimizedColumn(cities, cityPairs);
+		final Map<City, CityPair> optimizedColumn = branchAndBoundStrategy.getMinimizedColumn(cities, cityPairs);
 		assertThat(optimizedColumn).isNotNull().hasSize(cities.size());
 		final List<Long> optimizedCosts = optimizedColumn.values().stream().map(CityPair::getCost).collect(toList());
 		assertThat(optimizedCosts).containsOnly(1l, 4l, 7l, 10l);
@@ -83,7 +86,7 @@ public class OptimizationStrategyUnitTest
 	public void testGetMinimizedRowEntry()
 	{
 		final City city = new City(4, "");
-		final Optional<CityPair> optimizedColumnEntry = optimizationStrategy.getMinimizedRowEntry(city, cityPairs);
+		final Optional<CityPair> optimizedColumnEntry = branchAndBoundStrategy.getMinimizedRowEntry(city, cityPairs);
 		assertThat(optimizedColumnEntry.isPresent()).isTrue();
 		assertThat(optimizedColumnEntry.get().getCity1()).isEqualTo(new City(1, ""));
 		assertThat(optimizedColumnEntry.get().getCost()).isEqualTo(3l);
@@ -92,7 +95,7 @@ public class OptimizationStrategyUnitTest
 	@Test
 	public void testGetMinimizedRow()
 	{
-		final Map<City, CityPair> optimizedRow = optimizationStrategy.getMinimizedRow(cities, cityPairs);
+		final Map<City, CityPair> optimizedRow = branchAndBoundStrategy.getMinimizedRow(cities, cityPairs);
 		assertThat(optimizedRow).isNotNull().hasSize(cities.size());
 		final List<Long> optimizedCosts = optimizedRow.values().stream().map(CityPair::getCost).collect(toList());
 		assertThat(optimizedCosts).containsOnly(1l, 2l, 3l, 4l);
@@ -103,7 +106,7 @@ public class OptimizationStrategyUnitTest
 	{
 		cityPairs = getPermutationsWithDiagonal(cities);
 		
-		final Set<CityPair> normalizedCityPairs = optimizationStrategy.normalizeRoute(cityPairs, DISTANCE_SYMMETRICAL);
+		final Set<CityPair> normalizedCityPairs = branchAndBoundStrategy.normalizeRoute(cityPairs, DISTANCE_SYMMETRICAL);
 		final Set<CityPair> diagonalElements = normalizedCityPairs.stream().filter(p -> p.getCity1().equals(p.getCity2())).collect(toSet());
 		assertThat(diagonalElements).isEmpty();
 	}
@@ -111,9 +114,9 @@ public class OptimizationStrategyUnitTest
 	@Test
 	public void testReduceRows()
 	{
-		cityPairs = optimizationStrategy.normalizeRoute(cityPairs, DISTANCE);
-		final Map<City, CityPair> minimizedColumn = optimizationStrategy.getMinimizedColumn(cities, cityPairs);
-		optimizationStrategy.reduceRows(cityPairs, minimizedColumn);
+		cityPairs = branchAndBoundStrategy.normalizeRoute(cityPairs, DISTANCE);
+		final Map<City, CityPair> minimizedColumn = branchAndBoundStrategy.getMinimizedColumn(cities, cityPairs);
+		branchAndBoundStrategy.reduceRows(cityPairs, minimizedColumn);
 		final List<Long> optimizedCosts = cityPairs.stream().filter(p -> p.getCity1().equals(new City(1,""))).map(CityPair::getCost).collect(toList());
 		assertThat(optimizedCosts).contains(0l, 1l, 2l);
 		final List<Long> optimizedCosts2 = cityPairs.stream().filter(p -> p.getCity1().equals(new City(2,""))).map(CityPair::getCost).collect(toList());
@@ -123,9 +126,9 @@ public class OptimizationStrategyUnitTest
 	@Test
 	public void testReduceColumns()
 	{
-		cityPairs = optimizationStrategy.normalizeRoute(cityPairs, DISTANCE_SYMMETRICAL);
-		final Map<City, CityPair> minimizedRow = optimizationStrategy.getMinimizedRow(cities, cityPairs);
-		optimizationStrategy.reduceColumns(cityPairs, minimizedRow);
+		cityPairs = branchAndBoundStrategy.normalizeRoute(cityPairs, DISTANCE_SYMMETRICAL);
+		final Map<City, CityPair> minimizedRow = branchAndBoundStrategy.getMinimizedRow(cities, cityPairs);
+		branchAndBoundStrategy.reduceColumns(cityPairs, minimizedRow);
 		final List<Long> optimizedCosts = cityPairs.stream().filter(p -> p.getCity2().equals(new City(1,""))).map(CityPair::getCost).collect(toList());
 		assertThat(optimizedCosts).contains(2l, 1l, 0l);
 		final List<Long> optimizedCosts2 = cityPairs.stream().filter(p -> p.getCity2().equals(new City(2,""))).map(CityPair::getCost).collect(toList());
@@ -135,10 +138,10 @@ public class OptimizationStrategyUnitTest
 	@Test
 	public void testCalculateEstimatedCostZeroCell()
 	{
-		cityPairs = optimizationStrategy.normalizeRoute(cityPairs, DISTANCE_SYMMETRICAL);
-		final Map<City, CityPair> minimizedRow = optimizationStrategy.getMinimizedRow(cities, cityPairs);
-		optimizationStrategy.reduceColumns(cityPairs, minimizedRow);
-		optimizationStrategy.calculateEstimatedCostZeroCell(cityPairs);
+		cityPairs = branchAndBoundStrategy.normalizeRoute(cityPairs, DISTANCE_SYMMETRICAL);
+		final Map<City, CityPair> minimizedRow = branchAndBoundStrategy.getMinimizedRow(cities, cityPairs);
+		branchAndBoundStrategy.reduceColumns(cityPairs, minimizedRow);
+		branchAndBoundStrategy.calculateEstimatedCostZeroCell(cityPairs);
 
 		final List<Long> estimatedCosts = cityPairs.stream().filter(p -> p.getCity1().equals(new City(1,""))).map(CityPair::getEstimatedZeroCellCost).collect(toList());
 		assertThat(estimatedCosts).contains(4l, 3l, 3l);
@@ -149,7 +152,7 @@ public class OptimizationStrategyUnitTest
 	@Test
 	public void testApplyBranchesAndBoundariesAlgorithm()
 	{
-		final CityPair cityPair = optimizationStrategy.applyBranchesAndBoundariesAlgorithm(cityPairs);
+		final CityPair cityPair = branchAndBoundStrategy.applyBranchesAndBoundariesAlgorithm(cityPairs, Collections.emptySet());
 		assertThat(cityPair).isNotNull();
 		assertThat(cityPairs).hasSize(6);
 	}
@@ -159,9 +162,8 @@ public class OptimizationStrategyUnitTest
 	{
 		cityPairs = getRandomPermutations(cities);
 
-		final List<City> route = optimizationStrategy.optimize(cityPairs, new City(1, ""), DISTANCE_SYMMETRICAL);
+		final List<CityPair> route = branchAndBoundStrategy.optimize(cityPairs, new City(1, ""), DISTANCE_SYMMETRICAL);
 		assertThat(route).isNotEmpty().hasSize(4);
-		dumpRoute(route);
 	}
 	
 	private Set<CityPair> getPermutations(final Set<City> cities)

@@ -1,17 +1,18 @@
 package org.ark.math.commivoyager.config;
 
-import org.ark.math.commivoyager.algorithm.OptimizationStrategy;
+import java.io.IOException;
+
+import org.ark.math.commivoyager.algorithm.BranchAndBoundStrategy;
 import org.ark.math.commivoyager.model.City;
 import org.ark.math.commivoyager.repository.CityFactory;
 import org.ark.math.commivoyager.repository.RouteReader;
 import org.ark.math.commivoyager.repository.impl.CsvRouteReader;
+import org.ark.math.commivoyager.util.GraphUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-
-import java.io.IOException;
 
 /**
  * Created by arkadys on 4/11/16.
@@ -24,17 +25,19 @@ public class Application {
     private String startCityName;
     @Value("${route.csv.file.path}")
     private String csvFilePath;
+	@Value("${route.csv.delimiter:;}")
+	private char delimiter;
 
     @Bean
     public RouteReader getRouteReader() throws IOException
     {
-        return new CsvRouteReader(csvFilePath);
+        return new CsvRouteReader(csvFilePath, delimiter);
     }
 
     @Bean
-    public OptimizationStrategy getOptimizationStrategy()
+    public BranchAndBoundStrategy getOptimizationStrategy()
     {
-        return new OptimizationStrategy();
+        return new BranchAndBoundStrategy();
     }
 
     @Bean
@@ -47,10 +50,17 @@ public class Application {
     public City startCity()
     {
         return getCityFactory().createCity(startCityName);
-    }
+    }  
+	
+	@Bean
+	public GraphUtils graphUtils()
+	{
+		return new GraphUtils();
+	}
 
     @Bean
     public static PropertySourcesPlaceholderConfigurer propertyPlaceholderConfigurer() {
         return new PropertySourcesPlaceholderConfigurer();
     }
+
 }
